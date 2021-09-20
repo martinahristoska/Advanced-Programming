@@ -1,0 +1,310 @@
+package Lab2;
+
+import javax.tools.Diagnostic;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Scanner;
+
+
+interface Movable {
+    void moveUp() throws ObjectCanNotBeMovedException;
+    void moveLeft() throws ObjectCanNotBeMovedException;
+    void moveRight() throws ObjectCanNotBeMovedException;
+    void moveDown() throws ObjectCanNotBeMovedException;
+    int getCurrentXPosition();
+    int getCurrentYPosition();
+
+
+}
+
+class ObjectCanNotBeMovedException extends Exception
+{
+    public ObjectCanNotBeMovedException(String message)
+    {
+        super(String.format(message));
+    }
+}
+class MovableObjectNotFittableException extends Exception
+{
+    public MovableObjectNotFittableException(String message)
+    {
+        super(message);
+    }
+}
+enum TYPE {
+    POINT,
+    CIRCLE
+}
+
+enum DIRECTION {
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT
+}
+class MovablePoint implements Movable{
+    private int x;
+    private int y;
+    private int xSpeed;
+    private int ySpeed;
+
+    public MovablePoint(int x, int y, int xSpeed, int ySpeed) {
+        this.x = x;
+        this.y = y;
+        this.xSpeed = xSpeed;
+        this.ySpeed = ySpeed;
+    }
+    //Point (-5,55) is out of bounds
+    @Override
+    public void moveUp() throws ObjectCanNotBeMovedException {
+        int value = this.y + ySpeed;
+        if (value>MovablesCollection.MAX_Y)
+        {
+            throw new ObjectCanNotBeMovedException(String.format("Point (%d,%d) is out of bounds",this.x,value));
+        }
+        this.y = value;
+    }
+
+    @Override
+    public void moveLeft() throws ObjectCanNotBeMovedException {
+        int value = this.x - xSpeed;
+        if (value<0)
+        {
+            throw new ObjectCanNotBeMovedException(String.format("Point (%d,%d) is out of bounds",value,this.y));
+        }
+        this.x = value;
+    }
+
+    @Override
+    public void moveRight() throws ObjectCanNotBeMovedException {
+        int value = this.x + xSpeed;
+        if (value>MovablesCollection.MAX_X)
+        {
+            throw new ObjectCanNotBeMovedException(String.format("Point (%d,%d) is out of bounds",value,this.y));
+        }
+        this.x = value;
+    }
+
+    @Override
+    public void moveDown() throws ObjectCanNotBeMovedException {
+        int value = this.y - ySpeed;
+        if (value<0)
+        {
+            throw new ObjectCanNotBeMovedException(String.format("Point (%d,%d) is out of bounds",this.x,value));
+        }
+        this.y = value;
+    }
+
+    @Override
+    public int getCurrentXPosition() {
+        return x;
+    }
+
+    @Override
+    public int getCurrentYPosition() {
+        return y;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Movable point with coordinates (%d,%d)",x,y);
+    }
+
+    public String returnCoor()
+    {
+        return String.format("(%d,%d)",x,y);
+    }
+
+}
+
+class MovableCircle implements Movable{
+
+    MovablePoint center;
+    int radius;
+
+    public MovableCircle(int radius, MovablePoint center) {
+        this.center = center;
+        this.radius = radius;
+    }
+
+    @Override
+    public void moveUp() throws ObjectCanNotBeMovedException {
+        center.moveUp();
+    }
+
+    @Override
+    public void moveLeft() throws ObjectCanNotBeMovedException {
+        center.moveLeft();
+    }
+
+    @Override
+    public void moveRight() throws ObjectCanNotBeMovedException {
+        center.moveRight();
+    }
+
+    @Override
+    public void moveDown() throws ObjectCanNotBeMovedException {
+        center.moveDown();
+    }
+
+    @Override
+    public int getCurrentXPosition() {
+        return 0;
+    }
+
+    @Override
+    public int getCurrentYPosition() {
+        return 0;
+    }
+    //Movable circle with center coordinates (23,25) and radius 16
+    @Override
+    public String toString() {
+        return String.format("Movable circle with center coordinates %s and radius %d", center.returnCoor(),radius);
+    }
+}
+
+class MovablesCollection
+{
+    public List<Movable> movableList;
+    public static int MAX_X = 0;
+    public static int MAX_Y = 0;
+
+    public MovablesCollection(int MAX_X,int MAX_Y) {
+        MovablesCollection.MAX_X = MAX_X;
+        MovablesCollection.MAX_Y = MAX_Y;
+        this.movableList = new ArrayList<>();
+    }
+
+    public static void setyMax(int value) {
+        MovablesCollection.MAX_Y = value;
+    }
+
+    public static void setxMax(int value) {
+        MovablesCollection.MAX_X = value;
+    }
+
+    public void addMovableObject(Movable m) throws MovableObjectNotFittableException {
+        if (m.getCurrentXPosition()>MovablesCollection.MAX_X ||
+                m.getCurrentYPosition()>MovablesCollection.MAX_Y)
+        {
+            throw new MovableObjectNotFittableException(m.toString() + "can not be fitted into the collection");
+        }
+        movableList.add(m);
+    }
+    void moveObjectsFromTypeWithDirection (TYPE type, DIRECTION direction) throws ObjectCanNotBeMovedException {
+        for (Movable movable: movableList)
+        {
+            switch (type)
+            {
+                case CIRCLE:
+                    if (movable instanceof MovableCircle) this.moveDirection(direction,movable);
+                case POINT:
+                    if (movable instanceof MovablePoint) this.moveDirection(direction,movable);
+            }
+        }
+
+    }
+    @Override
+    public String toString() {
+        return String.format("Collection of movable objects with size %d",movableList.size());
+    }
+
+    public void moveDirection(DIRECTION direction, Movable m) throws ObjectCanNotBeMovedException {
+        switch (direction)
+        {
+            case UP: m.moveUp();
+            case DOWN: m.moveDown();
+            case LEFT: m.moveLeft();
+            case RIGHT: m.moveRight();
+        }
+    }
+}
+public class CirclesTest {
+
+    public static void main(String[] args) throws ObjectCanNotBeMovedException, MovableObjectNotFittableException {
+
+        System.out.println("===COLLECTION CONSTRUCTOR AND ADD METHOD TEST===");
+        MovablesCollection collection = new MovablesCollection(100, 100);
+        Scanner sc = new Scanner(System.in);
+        int samples = Integer.parseInt(sc.nextLine());
+        for (int i = 0; i < samples; i++) {
+            String inputLine = sc.nextLine();
+            String[] parts = inputLine.split(" ");
+
+            int x = Integer.parseInt(parts[1]);
+            int y = Integer.parseInt(parts[2]);
+            int xSpeed = Integer.parseInt(parts[3]);
+            int ySpeed = Integer.parseInt(parts[4]);
+
+            if (Integer.parseInt(parts[0]) == 0) { //point
+                try {
+                    collection.addMovableObject(new MovablePoint(x, y, xSpeed, ySpeed));
+                }
+                catch (MovableObjectNotFittableException e)
+                {
+                    System.out.println(e.getMessage());
+                }
+            } else { //circle
+                try {
+                    int radius = Integer.parseInt(parts[5]);
+                    collection.addMovableObject(new MovableCircle(radius, new MovablePoint(x, y, xSpeed, ySpeed)));
+                }
+                catch (MovableObjectNotFittableException e)
+                {
+                    System.out.println(e.getMessage());
+                }
+            }
+
+        }
+        System.out.println(collection.toString());
+
+        System.out.println("MOVE POINTS TO THE LEFT");
+        try {
+            collection.moveObjectsFromTypeWithDirection(TYPE.POINT, DIRECTION.LEFT);
+        }
+        catch (ObjectCanNotBeMovedException e)
+        {
+            System.out.println(e.getMessage());
+        }
+        System.out.println(collection.toString());
+
+        System.out.println("MOVE CIRCLES DOWN");
+        try {
+            collection.moveObjectsFromTypeWithDirection(TYPE.CIRCLE, DIRECTION.DOWN);
+
+        }
+        catch (ObjectCanNotBeMovedException e)
+        {
+            System.out.println(e.getMessage());
+        }
+        System.out.println(collection.toString());
+
+        System.out.println("CHANGE X_MAX AND Y_MAX");
+        MovablesCollection.setxMax(90);
+        MovablesCollection.setyMax(90);
+
+        System.out.println("MOVE POINTS TO THE RIGHT");
+        try {
+            collection.moveObjectsFromTypeWithDirection(TYPE.POINT, DIRECTION.RIGHT);
+
+        }
+        catch (ObjectCanNotBeMovedException e)
+        {
+            System.out.println(e.getMessage());
+        }
+        System.out.println(collection.toString());
+
+        System.out.println("MOVE CIRCLES UP");
+        try {
+            collection.moveObjectsFromTypeWithDirection(TYPE.CIRCLE, DIRECTION.UP);
+        }
+        catch (ObjectCanNotBeMovedException e)
+        {
+            System.out.println(e.getMessage());
+        }
+        System.out.println(collection.toString());
+
+    }
+
+}
