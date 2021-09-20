@@ -1,0 +1,398 @@
+package VakciniZadaca2;
+
+import java.io.*;
+import java.time.LocalDate;
+import java.time.Period;
+import java.util.*;
+import java.util.stream.Collectors;
+
+class  InvalidApplicationException extends Exception
+{
+    public  InvalidApplicationException(String name, String surname, String ID)
+    {
+        super(String.format("The application for %s %s with ID: %s is not allowed," +
+                "because the citizen is under 18 years old.",name,surname,ID));
+    }
+}
+
+abstract class Application implements Comparable<Application>
+{
+    private String ID;
+    private String name;
+    private String surname;
+    private String profession;
+    private LinkedList<String> vaccines;
+    private Integer priority;
+
+    public Application(String ID, String name, String surname, String profession, String vaccine1,String vaccine2,String vaccine3,Integer priority) {
+        this.ID = ID;
+        this.name = name;
+        this.surname = surname;
+        this.profession = profession;
+        this.vaccines = new LinkedList<>();
+        this.vaccines.add(vaccine1);
+        this.vaccines.add(vaccine2);
+        this.vaccines.add(vaccine3);
+        this.priority = priority;
+    }
+
+    public String getID() {
+        return ID;
+    }
+
+    public String getSurname() {
+        return surname;
+    }
+
+    public String getProfession() {
+        return profession;
+    }
+
+    public LinkedList<String> getVaccines() {
+        return vaccines;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Integer getPriority() {
+        return priority;
+    }
+
+    public  static Application createPerson(String line) throws InvalidApplicationException {
+        String [] parts = line.split("\\s+");
+        String ID = parts[0];
+        String name = parts[1];
+        String surname = parts[2];
+        String profession = parts[3];
+        LinkedList<String> vaccines = new LinkedList<>();
+        for (int i=4;i<parts.length;i++)
+        {
+            vaccines.add(parts[i]);
+        }
+        if (getAge(ID) < 18)
+        {
+            throw new InvalidApplicationException(name,surname,ID);
+        }
+        if (profession.equals("DOCTOR") || profession.equals("NURSE") || profession.equals("POLICEMAN") || profession.equals("FIREMAN"))
+        {
+            return new PriorityApplication(ID,name,surname,profession,vaccines.get(0),vaccines.get(1),vaccines.get(2));
+        }
+        else {
+            return new BasicApplication(ID,name,surname,profession,vaccines.get(0),vaccines.get(1),vaccines.get(2));
+        }
+    }
+    public static int getAge(String ID)
+    {
+        int day = Integer.parseInt(ID.substring(0,2));
+        int month = Integer.parseInt(ID.substring(2,4));
+        String year = ID.substring(4,7);
+        char numYear = ID.charAt(4);
+        if (numYear == '9')
+        {
+            year = "1" + year;
+        }
+        else
+        {
+            year = "2" + year;
+        }
+        int fullYear = Integer.parseInt(year);
+        LocalDate today = LocalDate.now();
+        LocalDate birthday = LocalDate.of(fullYear,month,day);
+        int age = Period.between(birthday,today).getYears();
+        return age;
+    }
+    private int getAge()
+    {
+        return getAge(this.ID);
+    }
+    public abstract String getType();
+
+    @Override
+    public String toString() {
+        return String.format("%s %s %s %d %s %s %s %s",ID,name,surname,getAge(ID),getType()
+                ,vaccines.get(0),vaccines.get(1),vaccines.get(2));
+    }
+
+
+    @Override
+    public int compareTo(Application o) {
+        return Comparator.comparing(Application::getPriority)
+                .reversed()
+                .thenComparing(Application::getAge)
+                .reversed()
+                .thenComparing(Application::getName)
+                .compare(this,o);
+    }
+}
+class PriorityApplication extends Application
+{
+
+    public PriorityApplication(String ID, String name, String surname, String profession, String vaccine1, String vaccine2, String vaccine3) {
+        super(ID, name, surname, profession, vaccine1, vaccine2, vaccine3,1);
+    }
+
+    @Override
+    public String getType() {
+        return "PRIORITY";
+    }
+}
+class BasicApplication extends Application
+{
+
+    public BasicApplication(String ID, String name, String surname, String profession, String vaccine1, String vaccine2, String vaccine3) {
+        super(ID, name, surname, profession, vaccine1, vaccine2, vaccine3,2);
+    }
+
+    @Override
+    public String getType() {
+        return "BASIC";
+    }
+}
+class VaccinesAccumulator
+{
+    private int PH;
+    private int AZ;
+    private int SF;
+
+    public VaccinesAccumulator(int PH, int AZ, int SF) {
+        this.PH = PH;
+        this.AZ = AZ;
+        this.SF = SF;
+    }
+
+    public void combine(VaccinesAccumulator vaccinesAccumulator)
+    {
+        this.PH += vaccinesAccumulator.PH;
+        this.AZ += vaccinesAccumulator.AZ;
+        this.SF += vaccinesAccumulator.SF;
+    }
+
+    private boolean takeAZ()
+    {
+        if (AZ >= 2)
+        {
+            AZ -= 2;
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    private boolean takePH()
+    {
+        if (PH >= 2)
+        {
+            PH -= 2;
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    private boolean takeSF()
+    {
+        if (SF >= 2)
+        {
+            SF -= 2;
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    private boolean takeDose(String vaccineName)
+    {
+        switch (vaccineName)
+        {
+            case "PH": return takePH();
+            case "AZ": return takeAZ();
+            case "SF": return takeSF();
+            default: return false;
+        }
+    }
+    public String gotDoses(Application application)
+    {
+        String first = application.getVaccines().get(0);
+        String second = application.getVaccines().get(1);
+        String third = application.getVaccines().get(2);
+
+        if (!takeDose(first))
+        {
+            if (!takeDose(second))
+            {
+                if (takeDose(third))
+                {
+                    return third;
+                }
+                else {
+                    return null;
+                }
+            }
+            else {
+                return second;
+            }
+        }
+        else {
+            return first;
+        }
+    }
+}
+
+class VaccinationSystem
+{
+    private List<Application> applications;
+    private VaccinesAccumulator vaccinesAccumulator;
+    private Map<String,String> vaccinated;
+    private Map<String,Application> applicationMap;
+
+    public VaccinationSystem()
+    {
+        this.applications = new ArrayList<>();
+        this.vaccinesAccumulator = new VaccinesAccumulator(0,0,0);
+        this.vaccinated = new TreeMap<>();
+        this.applicationMap = new TreeMap<>();
+    }
+
+    public void readApplications(InputStream inputStream) {
+        BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
+        this.applications = br.lines().map(line -> {
+            try {
+                return Application.createPerson(line);
+            } catch (InvalidApplicationException e) {
+                System.out.println(e.getMessage());
+                return null;
+            }
+        })
+                .filter(Objects::nonNull)
+                .sorted()
+                .collect(Collectors.toList());
+        applications.forEach(i-> applicationMap.putIfAbsent(i.getID(),i));
+    }
+
+    public void printApplications(OutputStream outputStream) {
+        PrintWriter pw = new PrintWriter(outputStream);
+        applications.stream().sorted().forEach(pw::println);
+        pw.flush();
+        pw.close();
+    }
+
+    public void vaccinate(int numPH, int numAZ, int numSF) {
+        Collections.sort(applications);
+
+        vaccinesAccumulator.combine(new VaccinesAccumulator(numPH,numAZ,numSF));
+
+        for (Application application: applications)
+        {
+            if (!vaccinated.containsKey(application.getID()))
+            {
+                String appliedDose = vaccinesAccumulator.gotDoses(application);
+                if (appliedDose == null)
+                {
+                    break;
+                }
+                vaccinated.putIfAbsent(application.getID(),appliedDose);
+            }
+        }
+    }
+
+    public Map<String, String> vaccinatedCitizens() {
+        return vaccinated;
+    }
+
+    public Map<Integer, Integer> appliedVaccinesPerPriority() {
+        Map<Integer,Integer> result = new HashMap<>();
+        result.put(1,0);
+        result.put(2,0);
+        result.put(3,0);
+
+        for (int i=1;i<=3;i++)
+        {
+            int finalI = i;
+            int count = (int) vaccinated.entrySet().stream()
+                    .filter(k-> k.getValue().equals(applicationMap.get(k.getKey()).getVaccines().get(finalI-1)))
+                    .count();
+            result.put(i,count);
+        }
+        return result;
+    }
+
+    public Map<String, List<Application>> vaccinatedCitizensByVaccineType() {
+        Map<String,List<Application>> result = new HashMap<>();
+
+        for (Map.Entry<String,String> entry: vaccinated.entrySet())
+        {
+            result.putIfAbsent(entry.getValue(), new ArrayList<>());
+            result.get(entry.getValue()).add(applicationMap.get(entry.getKey()));
+        }
+        return result;
+    }
+
+    public Collection<Application> nextToVaccinate(int n) {
+        return applications.stream()
+                .filter(a -> a.getType().equals("BASIC"))
+                .filter(a -> !vaccinated.containsKey(a.getID()))
+                .limit(n)
+                .collect(Collectors.toList());
+    }
+}
+
+public class VaccinationSystemTest2 {
+
+    public static Map<Integer, List<Integer>> populateCombinations() {
+        Map<Integer, List<Integer>> map = new HashMap<>();
+
+        map.put(1, new ArrayList<>(Arrays.asList(2, 0, 2)));
+        map.put(2, new ArrayList<>(Arrays.asList(2, 2, 2)));
+        map.put(3, new ArrayList<>(Arrays.asList(2, 4, 2)));
+        map.put(4, new ArrayList<>(Arrays.asList(2, 4, 4)));
+        map.put(5, new ArrayList<>(Arrays.asList(4, 4, 4)));
+
+        return map;
+    }
+
+    public static void main(String[] args) {
+        Map<Integer, List<Integer>> combinations = populateCombinations();
+
+        for (int i = 1; i <= combinations.size(); i++) {
+            VaccinationSystem vaccinationSystem = new VaccinationSystem();
+
+            System.out.println("------------ READING FROM INPUT STREAM ------------");
+            vaccinationSystem.readApplications(System.in);
+            System.out.println("------------ READING SUCCESSFUL ------------");
+            System.out.println();
+
+            List<Integer> combination = combinations.get(i);
+
+            System.out.println("------------ CASE " + i + "------------");
+            System.out.println();
+            vaccinationSystem.vaccinate(combination.get(0), combination.get(1), combination.get(2));
+
+            System.out.println("------------------------ TEST VACCINATED CITIZENS ------------");
+            Map<String, String> map1 = vaccinationSystem.vaccinatedCitizens();
+            map1.forEach((key, value) -> System.out.println(key + " " + value));
+            System.out.println();
+
+            System.out.println("------------------------ TEST APPLIED VACCINES PER PRIORITY ------------");
+            Map<Integer, Integer> map2 = vaccinationSystem.appliedVaccinesPerPriority();
+            map2.forEach((key, value) -> System.out.println(key + " " + value));
+            System.out.println();
+
+            System.out.println("------------------------ TEST VACCINATED CITIZENS BY VACCINE TYPE ------------");
+            Map<String, List<Application>> map3 = vaccinationSystem.vaccinatedCitizensByVaccineType();
+            map3.forEach((key, value) -> System.out.println(key + " " + value));
+            System.out.println();
+
+            System.out.println("------------------------ TEST NEXT TO VACCINATE 3 ------------");
+            Collection<Application> collection1 = vaccinationSystem.nextToVaccinate(3);
+            collection1.forEach(k -> System.out.println(k));
+            System.out.println();
+
+            System.out.println("------------------------ TEST NEXT TO VACCINATE 1 ------------");
+            Collection<Application> collection2 = vaccinationSystem.nextToVaccinate(1);
+            collection2.forEach(k -> System.out.println(k));
+            System.out.println();
+        }
+    }
+}
