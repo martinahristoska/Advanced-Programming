@@ -1,0 +1,36 @@
+package Lab7;
+
+import java.io.InputStream;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class Anagrams {
+
+    public static void main(String[] args) {
+        findAll(System.in);
+    }
+
+    public static void findAll(InputStream inputStream) {
+        // Vasiod kod ovde
+        Scanner sc = new Scanner(inputStream);
+        Map<String, LinkedList<String>> anagrams = new TreeMap<>();
+        while (sc.hasNext())
+        {
+            String line = sc.nextLine();
+            String sorted = sortedWord(line);
+            anagrams.putIfAbsent(sorted,new LinkedList<>());
+            anagrams.get(sorted).add(line);
+        }
+        anagrams.values()
+                .stream()
+                .filter(a->a.size()>=5)
+                .sorted(Comparator.comparing(LinkedList::getFirst))
+                .forEach(list->System.out.println(list.stream().collect(Collectors.joining(" "))));
+    }
+    public static String sortedWord(String word)
+    {
+        char [] array = word.toCharArray();
+        Arrays.sort(array);
+        return new String(array);
+    }
+}
