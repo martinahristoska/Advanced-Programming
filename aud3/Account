@@ -1,1 +1,35 @@
 
+package aud3;
+
+public abstract class Account {
+    private String name;
+    private int number;
+    private double currentAmount;
+
+    public Account(String name, int number, double currentAmount) {
+        this.name = name;
+        this.number = number;
+        this.currentAmount = currentAmount;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public double getCurrentAmount() {
+        return currentAmount;
+    }
+    public void addAmount(double amount)
+    {
+        currentAmount+=amount;
+    }
+    public void subtractAmount(double amount)
+    {
+        currentAmount-=amount;
+    }
+
+}
