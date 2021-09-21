@@ -1,112 +1,91 @@
-package VtorKolokvium;
-
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 class Event implements Comparable<Event>
 {
-    private String name;
+    private String eventName;
     private String location;
     private Date date;
 
-    public Event(String name, String location, Date date) {
-        this.name = name;
+    public Event(String eventName, String location, Date date) {
+        this.eventName = eventName;
         this.location = location;
         this.date = date;
     }
 
-    public String getName() {
-        return name;
+    @Override
+    public String toString() {
+        DateFormat formatter = new SimpleDateFormat("dd MMM, YYY HH:mm");
+        return String.format("%s at %s, %s",formatter.format(date),location,eventName);
     }
+
+    public String getEventName() {
+        return eventName;
+    }
+    public int month()
+    {
+        return date.getMonth();
+    }
+   
 
     public String getLocation() {
         return location;
     }
-
-    public int getMonth()
-    {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(date);
-        int month = calendar.get(Calendar.MONTH);
-        return month;
-    }
-
 
     public Date getDate() {
         return date;
     }
 
     @Override
-    public  int compareTo(Event o) {
-        return Comparator.comparing(Event::getDate).thenComparing(Event::getName)
-                .compare(this,o);
-    }
-
-    @Override
-    public String toString() {
-        DateFormat format = new SimpleDateFormat("dd MMM, YYY HH:mm");
-        return String.format("%s at %s, %s",
-                format.format(date),location,name);
+    public int compareTo(Event o) {
+        return Comparator.comparing(Event::getDate).thenComparing(Event::getEventName).compare(this,o);
     }
 }
 
 class EventCalendar
 {
     int year;
-    Map<Date, Set<Event>> events;
-    Set<Event> eventSet;
+    Set<Event> events;
 
     public EventCalendar(int year) {
-
-        this.year = year;
-        this.events = new HashMap<>();
-        this.eventSet = new HashSet<>();
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        this.year = year-1900;
+        this.events = new TreeSet<>();
     }
 
     public void addEvent(String name, String location, Date date) throws WrongDateException {
-        DateFormat df = new SimpleDateFormat("yyyy MMM dd");
-        df.format(date);
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(date);
-        int year2 = calendar.get(Calendar.YEAR);
-        if (this.year!= year2)
-        {
-            throw new WrongDateException(date);
-        }
-        events.putIfAbsent(date,new HashSet<>());
-        events.get(date).add(new Event(name, location, date));
-        eventSet.add(new Event(name, location, date));
+        if (this.year!=date.getYear())
+            throw new  WrongDateException(date);
+        events.add(new Event(name,location,date));
     }
 
     public void listEvents(Date date) {
-        if (events.get(date).isEmpty())
+        Predicate<Event> sameDate = event -> (event.getDate().getMonth() == date.getMonth())&&(event.getDate().getDate() == date.getDate());
+        List<Event> list = events.stream().filter(sameDate).collect(Collectors.toList());
+        if (list.isEmpty())
         {
-            System.out.println("No events on this day");
+            System.out.println("No events on this day!");
         }
         else {
-            events.get(date).stream()
-                    .sorted(Event::compareTo)
-                    .forEach(System.out::println);
+            list.forEach(System.out::println);
         }
     }
 
     public void listByMonth() {
-        Map<Integer,Long> map =
-                eventSet.stream()
+        Map<Integer,Long> map = events.stream()
                 .collect(Collectors.groupingBy(
-                        Event::getMonth,
+                        Event::month,
                         Collectors.counting()
                 ));
-        IntStream.range(0,12)
-                .forEach(i->{
-                    System.out.printf("%d : %d\n",i+1,map.containsKey(i)?
-                            map.get(i).intValue():0);
-                });
+        IntStream.range(0,12).forEach(i-> {
+            System.out.printf("%d : %d\n",i+1,map.containsKey(i) ? map.get(i).intValue() : 0);
+        });
     }
 }
 class WrongDateException extends Exception
@@ -143,5 +122,4 @@ public class EventCalendarTest {
         eventCalendar.listByMonth();
     }
 }
-
 
